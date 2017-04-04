@@ -1,0 +1,91 @@
+---
+title: "Fish List"
+author: "Derrick Theophille"
+date: "4 April 2017"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+# Introduction
+
+This is a short exercise that follows the stages of building an "all-purpose" fish species dataset for use in your further fisheries analysis.
+
+I will do my best to explain every step of the journey with you, so look out for the hashtags (#) within the code chunks (the sections that begin with ```{}), they offer explanations for what is going on.
+
+## Required Libraries
+Before we begin, we need to load a few libraries that will help make the work easier. Libraries are add-ons that offer more functionality to the basic R. In the chunk below I 
+
+```{r required libraries}
+# Install the packages I will be using. I plan to use "dplyr", "tidyr" and "knitr". You may have already installed these packages. But in case you haven't you can do so now by running the line below.
+# install.packages(c("dplyr", "tidyr", "knitr", "repmis"))
+
+# Load the installed packages into our R session. Explanations given after hashtags. 
+library(dplyr) # for summaries
+library(tidyr) # for reshaping data
+library(knitr) # for neat tables
+library(repmis) # for accessing data from online. Keep an eye on the prompt in the console window (if you use RStudio, it is the bottom-left window) where you will be asked to select "Y" or "n", after reading the message. In order to proceed, however, you will need to type "Y".
+```
+
+## Required Datasets
+
+```{r my fish list}
+# My local fish list is stored in a binary file called "LUfish.rda". For your convenience I've made it available only from my Git repository. Run the code below to download and attach it.
+source_data("https://github.com/theode/UFD_Interactions/blob/master/LUfish.rda?raw=true")
+
+# Let's look at the data briefly to get an idea what is included:
+head(LUfish)
+
+# The column names aren't the most intuitive for humans, but that's because the data was ripped directly from a database query, where the names were not meant for common consumption, only the database manager. We can fix this up:
+LUfish <- rename(LUfish, # We are going to edit some of the column names of LUfish
+                 ID = fishID, # ID replaces fishID
+                 English = fishCommName, # English replaces fishCommName
+                 Fishery = fishFisheryCodeLU, # Fishery replaces fishFisheryCodeLU
+                 Patois = fishPatName, # Patois replaces fishPatName
+                 Scientific = fishSciName) # Scientific replaces fishSciName
+
+# The "Group" and "Category" column labels cna remain. These are used for sorting and grouping fish species in some of my other reports.
+
+# Lets look at a summary of the data
+summary(LUfish)
+# This isn't very helpful as our data does not have any useful numerical variables that can give a summary. This does, however show some useful information. Take a look and see for yourself.
+
+glimpse(LUfish)
+```
+
+```{r FAO ASFIS data}
+# I converted the xlsx file Mario shared on the Dgroup to an rda format and stored on Github. Access and load here:
+source_data("https://github.com/theode/UFD_Interactions/blob/master/asfis.rda?raw=true")
+
+head(asfis)
+
+glimpse(asfis) # There are almost 13,000 observations in this dataset and 14 variables (columns). I Do not think we'll be needing Russian and Chinese names any time soon, so we will remove them from our dataset. We'll just keep the 3 Alpha code, the scientific name, the english name, the author, family and order.
+
+asfis <- select(asfis,
+                `3A_CODE`, Scientific_name, English_name, Author, Family, Order)
+# Note that the variable 3A_CODE needs to be enclosed in backquotes (`). This is because 3A_CODE is a non-standard variable name as it begins with a number. Backquotes are used to allow the use of variables such as this.
+```
+
+```{r join the datasets}
+# Now for the fun part: joining the data. 
+# I think it's best to join the data using the scientific name variale as this is most-likely the common variable in both datasets. The only problem is that the variable is called slightly differnet names in both datasets. No problem, though, we can tell R which variables to use within the "by=c()" argument.
+fishlist <- LUfish %>% 
+  left_join(asfis, by=c("Scientific" = "Scientific_name"))
+
+str(fishlist)
+
+# Note also that the final data is only 166 observations (or species) and 12 variables. Why do you think that is?
+
+# Lets make a more streamlined table in preparation of our final task.
+fishlist <- select(fishlist,
+                   `3A_CODE`, English_name, Patois, Scientific, Author) %>% 
+  arrange(English_name)
+```
+
+```{r table}
+# Finally, lets prepare a fancy table for our list.
+kable(fishlist)
+```
+
